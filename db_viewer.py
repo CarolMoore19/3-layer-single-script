@@ -5,7 +5,7 @@ import pytest
 class Singleton:
     count = 0
     cursor = None
-    db_name = 'aquarium.db' 
+    db_name = 'aquarium.db'
     def __new__(cls):
         if not hasattr(cls, 'instance'):
             cls.instance = super(Singleton, cls).__new__(cls)
@@ -23,7 +23,7 @@ class Singleton:
         else:
             print("DB NOT found!  run initialize_database first")
             self.cursor = None
-            
+   
 
     def sql(self, sql_statement):
         if self.cursor:
@@ -37,17 +37,23 @@ class Singleton:
         else:
             print("No database connection")
             return []
-
-@pytest.fixture()
-def initialize_database(): 
+def initialize_database(database_vals):
     """Initialise a file, and use sqlite3 to generate a small table we'll use for testing"""
     connection = sqlite3.connect("aquarium.db")
     cursor = connection.cursor()
     print("INTIALIZING DATABASE")
-    cursor.execute("CREATE TABLE fish (name TEXT, species TEXT, tank_number INTEGER)")
-    cursor.execute("INSERT INTO fish VALUES ('Sammy', 'shark', 1)")
-    cursor.execute("INSERT INTO fish VALUES ('Jamie', 'cuttlefish', 7)")
+    for line in database_vals:
+    	cursor.execute(line)
     connection.commit()
+
+@pytest.fixture()
+def database_vals():
+	_database_vals = [
+	"CREATE TABLE fish (name TEXT, species TEXT, tank_number INTEGER)",
+	"INSERT INTO fish VALUES ('Sammy', 'shark', 1)",
+	"INSERT INTO fish VALUES ('Jamie', 'cuttlefish', 7)"
+	]
+	return _database_vals
 
 def delete_database():
     """Delete, or clear the entire database completely
@@ -55,52 +61,39 @@ def delete_database():
     """
     if os.path.exists('aquarium.db'):
         os.remove('aquarium.db')
-   
-def db_fresh_start():
+
+def db_fresh_start(database_vals):
     """For testing purposes, it's useful to reset to a known state.
         So we clear the database, and then unitialize it with only our small set of data
     """
     delete_database()
-    initialize_database()
+    initialize_database(database_vals)
 
 ################################
 # ***** TESTS *****
 ################################
 
 
-
-Book says how to create a post-test fixture to delete and not leave
-crud behind.  Fixtures that act before your test and after your test to clean up.
-TESt shoould not leave things behind  Also they should not depend on each other.
-Tests shoiuld have complete indepdence from one another.
-That is the reason for the fixtures so each test has an initalization feature
-
-
-#Test only one this function
-
-
-pytest.mark.only_test_this
-def test_is_singleton(initialize_database):
+#extra credit: Test only one this function
+@pytest.mark.only_test_this
+def test_is_singleton():
     delete_database()
     a = Singleton()
     b = Singleton()
     assert id(a) == id(b)
-    
 
-def test_not_initialized():
+def test_not_initialized(database_vals):
     delete_database()
     db = Singleton()
     assert [] == db.sql("SELECT * FROM FISH;")
-    #delete_database
 
-def test_database_connect(initialize_database):
-    db_fresh_start()
+def test_database_connect(database_vals):
+    db_fresh_start(database_vals)
     db = Singleton()
     db.get_cursor()
     assert 2 == len(db.sql("SELECT * FROM fish;"))
-    
 
-def test_resetting_after_db_creation():
+def test_resetting_after_db_creation(database_vals):
     delete_database()
 
     db_a = Singleton()
@@ -109,21 +102,19 @@ def test_resetting_after_db_creation():
     db_a.get_cursor()
     assert [] == db_a.sql("SELECT * FROM FISH;")
     assert [] == db_b.sql("SELECT * FROM FISH;")
-    
-    initialize_database()
+
+    initialize_database(database_vals)
 
     db_a.get_cursor()
     assert 2 == len(db_b.sql("SELECT * FROM fish;"))
-    
-    #what if I create the singleton before the DB, then I initialize
-    #Show the singletons are still there and now have access to the data
 
-    
+
+
 if __name__=="__main__":
 
-    
+
     db = Singleton()
-    
+
     while True:
         stmt = input("=> ")
         if stmt == 'quit':
@@ -132,5 +123,3 @@ if __name__=="__main__":
         rows = db.sql(stmt)
         for row in rows:
             print(row)
-            
-
