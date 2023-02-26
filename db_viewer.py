@@ -1,6 +1,6 @@
 import sqlite3
 import os
-
+import pytest
 
 class Singleton:
     count = 0
@@ -38,7 +38,7 @@ class Singleton:
             print("No database connection")
             return []
 
-
+@pytest.fixture()
 def initialize_database(): 
     """Initialise a file, and use sqlite3 to generate a small table we'll use for testing"""
     connection = sqlite3.connect("aquarium.db")
@@ -66,22 +66,39 @@ def db_fresh_start():
 ################################
 # ***** TESTS *****
 ################################
-def test_is_singleton():
+
+
+
+Book says how to create a post-test fixture to delete and not leave
+crud behind.  Fixtures that act before your test and after your test to clean up.
+TESt shoould not leave things behind  Also they should not depend on each other.
+Tests shoiuld have complete indepdence from one another.
+That is the reason for the fixtures so each test has an initalization feature
+
+
+#Test only one this function
+
+
+pytest.mark.only_test_this
+def test_is_singleton(initialize_database):
     delete_database()
     a = Singleton()
     b = Singleton()
     assert id(a) == id(b)
     
+
 def test_not_initialized():
     delete_database()
     db = Singleton()
     assert [] == db.sql("SELECT * FROM FISH;")
+    #delete_database
 
-def test_database_connect():
+def test_database_connect(initialize_database):
     db_fresh_start()
     db = Singleton()
     db.get_cursor()
     assert 2 == len(db.sql("SELECT * FROM fish;"))
+    
 
 def test_resetting_after_db_creation():
     delete_database()
@@ -92,12 +109,14 @@ def test_resetting_after_db_creation():
     db_a.get_cursor()
     assert [] == db_a.sql("SELECT * FROM FISH;")
     assert [] == db_b.sql("SELECT * FROM FISH;")
-
+    
     initialize_database()
 
     db_a.get_cursor()
     assert 2 == len(db_b.sql("SELECT * FROM fish;"))
-
+    
+    #what if I create the singleton before the DB, then I initialize
+    #Show the singletons are still there and now have access to the data
 
     
 if __name__=="__main__":
@@ -113,3 +132,5 @@ if __name__=="__main__":
         rows = db.sql(stmt)
         for row in rows:
             print(row)
+            
+
